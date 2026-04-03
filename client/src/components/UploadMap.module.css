@@ -1,0 +1,55 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  min-height: 280px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  padding: 40px;
+}
+
+.dropzone:hover,
+.dragging {
+  border-color: #e53e3e;
+  background: #fff5f5;
+}
+
+.icon { font-size: 48px; }
+
+.hint {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.sub {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.loading {
+  font-size: 13px;
+  color: #4a7cfc;
+  font-weight: 500;
+}
+
+.error {
+  font-size: 13px;
+  color: #e53e3e;
+  font-weight: 500;
+}

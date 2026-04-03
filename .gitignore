@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
+client/dist/
+client/dist-ssr/
+
+# SQLite database
+server/citywalk.db
+server/citywalk.db-wal
+server/citywalk.db-shm
+
+# Uploaded files
+server/uploads/
+
+# Editor / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+Thumbs.db
