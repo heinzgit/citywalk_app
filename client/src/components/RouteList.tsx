@@ -7,6 +7,7 @@ interface Props {
   groups: Group[]
   selectedId: string | null
   drawing: boolean
+  scale: number | null
   onSelect: (id: string) => void
   onRename: (id: string, name: string) => void
   onRecolor: (id: string, color: string) => void
@@ -17,19 +18,41 @@ interface Props {
   onDeleteGroup: (id: string) => void
   onStartDraw: () => void
   onCancelDraw: () => void
+  onSetScale: (scale: number) => void
+}
+
+function pixelLength(points: [number, number][]): number {
+  let d = 0
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i][0] - points[i - 1][0]
+    const dy = points[i][1] - points[i - 1][1]
+    d += Math.sqrt(dx * dx + dy * dy)
+  }
+  return d
+}
+
+function formatLength(meters: number): string {
+  if (meters >= 1000) return (meters / 1000).toFixed(2) + ' km'
+  if (meters >= 100) return Math.round(meters) + ' m'
+  return meters.toFixed(1) + ' m'
 }
 
 export default function RouteList({
-  routes, groups, selectedId, drawing,
+  routes, groups, selectedId, drawing, scale,
   onSelect, onRename, onRecolor, onMove, onDelete,
   onCreateGroup, onRenameGroup, onDeleteGroup,
-  onStartDraw, onCancelDraw,
+  onStartDraw, onCancelDraw, onSetScale,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [editingRouteId, setEditingRouteId] = useState<string | null>(null)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const newGroupInputRef = useRef<HTMLInputElement>(null)
+
+  // Scale calibration state
+  const [calibOpen, setCalibOpen] = useState(false)
+  const [calibRouteId, setCalibRouteId] = useState('')
+  const [calibLength, setCalibLength] = useState('')
 
   function toggleCollapse(id: string) {
     setCollapsed(prev => {
@@ -64,7 +87,22 @@ export default function RouteList({
     if (name?.trim()) onCreateGroup(name.trim())
   }
 
+  function handleCalibrate() {
+    const route = routes.find(r => r.id === calibRouteId)
+    if (!route) return
+    const pxLen = pixelLength(route.points)
+    if (pxLen === 0) return
+    const realMeters = parseFloat(calibLength)
+    if (!realMeters || realMeters <= 0) return
+    onSetScale(realMeters / pxLen)
+    setCalibOpen(false)
+    setCalibRouteId('')
+    setCalibLength('')
+  }
+
   function renderRoute(route: Route, indented = false) {
+    const pxLen = pixelLength(route.points)
+    const realLen = scale && pxLen > 0 ? pxLen * scale : null
     return (
       <li
         key={route.id}
@@ -80,22 +118,27 @@ export default function RouteList({
           title="修改颜色"
         />
 
-        {editingRouteId === route.id ? (
-          <input
-            className={styles.editInput}
-            value={editValue}
-            autoFocus
-            onChange={e => setEditValue(e.target.value)}
-            onBlur={() => commitEditRoute(route.id)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commitEditRoute(route.id)
-              if (e.key === 'Escape') setEditingRouteId(null)
-            }}
-            onClick={e => e.stopPropagation()}
-          />
-        ) : (
-          <span className={styles.name}>{route.name}</span>
-        )}
+        <div className={styles.nameBlock}>
+          {editingRouteId === route.id ? (
+            <input
+              className={styles.editInput}
+              value={editValue}
+              autoFocus
+              onChange={e => setEditValue(e.target.value)}
+              onBlur={() => commitEditRoute(route.id)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitEditRoute(route.id)
+                if (e.key === 'Escape') setEditingRouteId(null)
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <span className={styles.name}>{route.name}</span>
+          )}
+          {realLen !== null && (
+            <span className={styles.lengthBadge}>{formatLength(realLen)}</span>
+          )}
+        </div>
 
         <div className={styles.actions}>
           <select
@@ -145,6 +188,63 @@ export default function RouteList({
             {drawing ? '✕ 取消' : '+ 画路线'}
           </button>
         </div>
+      </div>
+
+      {/* Scale calibration section */}
+      <div className={styles.scaleSection}>
+        <div className={styles.scaleRow}>
+          <span className={styles.scaleIcon}>📏</span>
+          <span className={styles.scaleLabel}>比例尺</span>
+          {scale
+            ? <span className={styles.scaleValue}>{formatLength(scale * 100)}/百像素</span>
+            : <span className={styles.scaleUnset}>未设置</span>
+          }
+          <button
+            className={`btn-ghost ${styles.calibBtn}`}
+            onClick={() => setCalibOpen(v => !v)}
+          >
+            {calibOpen ? '收起' : (scale ? '重新校准' : '校准')}
+          </button>
+        </div>
+
+        {calibOpen && (
+          <div className={styles.calibForm}>
+            <select
+              className={styles.calibSelect}
+              value={calibRouteId}
+              onChange={e => setCalibRouteId(e.target.value)}
+            >
+              <option value="">— 选择参考路线 —</option>
+              {routes.map(r => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            <div className={styles.calibInputRow}>
+              <input
+                type="number"
+                className={styles.calibInput}
+                placeholder="实际长度"
+                min="0.1"
+                step="any"
+                value={calibLength}
+                onChange={e => setCalibLength(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCalibrate()}
+              />
+              <span className={styles.calibUnit}>米</span>
+              <button
+                className={`btn-primary ${styles.calibConfirm}`}
+                disabled={!calibRouteId || !calibLength || parseFloat(calibLength) <= 0}
+                onClick={handleCalibrate}
+              >确定</button>
+            </div>
+            {calibRouteId && (() => {
+              const r = routes.find(x => x.id === calibRouteId)
+              if (!r) return null
+              const px = pixelLength(r.points)
+              return <p className={styles.calibHint}>该路线像素长度：{Math.round(px)} px</p>
+            })()}
+          </div>
+        )}
       </div>
 
       {routes.length === 0 && groups.length === 0 && !drawing && (

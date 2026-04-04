@@ -25,6 +25,8 @@ const pool = mysql.createPool({
 });
 
 export async function initDb() {
+  // Migration: add scale column if missing
+  try { await pool.execute('ALTER TABLE maps ADD COLUMN scale DOUBLE DEFAULT NULL') } catch (_) {}
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS maps (
       id VARCHAR(36) PRIMARY KEY,

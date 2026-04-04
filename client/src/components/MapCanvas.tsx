@@ -30,6 +30,7 @@ export default function MapCanvas({ map }: Props) {
   const [routes, setRoutes] = useState<Route[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [scale, setScale] = useState<number | null>(map.scale ?? null)
 
   // Drawing state
   const [drawing, setDrawing] = useState(false)
@@ -295,6 +296,15 @@ export default function MapCanvas({ map }: Props) {
     setRoutes(prev => prev.map(r => r.group_id === id ? { ...r, group_id: null } : r))
   }
 
+  async function handleSetScale(newScale: number) {
+    await fetch(`/api/maps/${map.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scale: newScale }),
+    })
+    setScale(newScale)
+  }
+
   function pointsToString(pts: [number, number][]) {
     return pts.map(([x, y]) => `${x},${y}`).join(' ')
   }
@@ -313,6 +323,7 @@ export default function MapCanvas({ map }: Props) {
         groups={groups}
         selectedId={selectedId}
         drawing={drawing}
+        scale={scale}
         onSelect={id => { setSelectedId(id); exitEditMode() }}
         onRename={renameRoute}
         onRecolor={recolorRoute}
@@ -323,6 +334,7 @@ export default function MapCanvas({ map }: Props) {
         onDeleteGroup={deleteGroup}
         onStartDraw={startDrawing}
         onCancelDraw={cancelDrawing}
+        onSetScale={handleSetScale}
       />
 
       <div

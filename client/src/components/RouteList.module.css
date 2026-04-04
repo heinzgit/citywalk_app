@@ -143,7 +143,6 @@
 }
 
 .name {
-  flex: 1;
   font-size: 13px;
   color: #374151;
   white-space: nowrap;
@@ -189,4 +188,120 @@
   color: #374151;
   cursor: pointer;
   max-width: 80px;
+}
+
+/* ── Name block ── */
+.nameBlock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.lengthBadge {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1;
+}
+
+/* ── Scale section ── */
+.scaleSection {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 12px;
+  background: #fafafa;
+}
+
+.scaleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scaleIcon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.scaleLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.scaleValue {
+  flex: 1;
+  font-size: 11px;
+  color: #4a7cfc;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scaleUnset {
+  flex: 1;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.calibBtn {
+  font-size: 11px;
+  padding: 3px 8px;
+  flex-shrink: 0;
+}
+
+.calibForm {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calibSelect {
+  font-size: 12px;
+  padding: 5px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  width: 100%;
+}
+
+.calibInputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calibInput {
+  flex: 1;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  min-width: 0;
+}
+.calibInput:focus {
+  border-color: #4a7cfc;
+}
+
+.calibUnit {
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.calibConfirm {
+  font-size: 12px;
+  padding: 5px 12px;
+  flex-shrink: 0;
+}
+
+.calibHint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
 }

@@ -71,15 +71,17 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/maps/:id — rename map
+// PUT /api/maps/:id — update name and/or scale
 router.put('/:id', async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+    const { name, scale } = req.body;
     const [rows] = await db.execute('SELECT * FROM maps WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Map not found' });
-    await db.execute('UPDATE maps SET original_name = ? WHERE id = ?', [name.trim(), req.params.id]);
-    res.json({ ...rows[0], original_name: name.trim() });
+    const newName = name !== undefined ? name.trim() : rows[0].original_name;
+    if (name !== undefined && !newName) return res.status(400).json({ error: 'name cannot be empty' });
+    const newScale = scale !== undefined ? scale : rows[0].scale;
+    await db.execute('UPDATE maps SET original_name = ?, scale = ? WHERE id = ?', [newName, newScale, req.params.id]);
+    res.json({ ...rows[0], original_name: newName, scale: newScale });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
