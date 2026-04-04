@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import type { MapMeta } from '../App'
+import { api } from '../api'
 import styles from './UploadMap.module.css'
 
 interface Props {
@@ -16,9 +17,14 @@ export default function UploadMap({ onUploaded }: Props) {
     setError(null)
     setLoading(true)
     try {
+      const token = localStorage.getItem('citywalk_token') ?? ''
       const form = new FormData()
       form.append('image', file)
-      const res = await fetch('/api/maps', { method: 'POST', body: form })
+      const res = await fetch('/api/maps', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      })
       if (!res.ok) throw new Error((await res.json()).error ?? '上传失败')
       const data: MapMeta = await res.json()
       onUploaded(data)

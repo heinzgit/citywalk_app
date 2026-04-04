@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { MapMeta } from '../App'
+import { api } from '../api'
 import RouteList from './RouteList'
 import styles from './MapCanvas.module.css'
 
@@ -57,10 +58,10 @@ export default function MapCanvas({ map }: Props) {
 
   // Load data on mount
   useEffect(() => {
-    fetch(`/api/maps/${map.id}/routes`)
-      .then(r => r.json()).then(setRoutes).catch(console.error)
-    fetch(`/api/maps/${map.id}/groups`)
-      .then(r => r.json()).then(setGroups).catch(console.error)
+    api.get<Route[]>(`/api/maps/${map.id}/routes`)
+      .then(setRoutes).catch(console.error)
+    api.get<Group[]>(`/api/maps/${map.id}/groups`)
+      .then(setGroups).catch(console.error)
   }, [map.id])
 
   // Init transform: center-fit the image
@@ -180,12 +181,7 @@ export default function MapCanvas({ map }: Props) {
     const name = prompt('给这条路线起个名字:', `路线 ${routes.length + 1}`)
     if (!name) { cancelDrawing(); return }
     try {
-      const res = await fetch(`/api/maps/${map.id}/routes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, points, color: DEFAULT_COLOR }),
-      })
-      const route: Route = await res.json()
+      const route = await api.post<Route>(`/api/maps/${map.id}/routes`, { name, points, color: DEFAULT_COLOR })
       setRoutes(prev => [...prev, route])
     } catch (err) { console.error(err) }
     cancelDrawing()
@@ -212,11 +208,7 @@ export default function MapCanvas({ map }: Props) {
   }
   async function saveEditMode() {
     if (!editingRouteId) return
-    await fetch(`/api/maps/${map.id}/routes/${editingRouteId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points: editPoints }),
-    })
+    await api.put(`/api/maps/${map.id}/routes/${editingRouteId}`, { points: editPoints })
     setRoutes(prev => prev.map(r => r.id === editingRouteId ? { ...r, points: editPoints } : r))
     exitEditMode()
   }
@@ -250,58 +242,38 @@ export default function MapCanvas({ map }: Props) {
 
   // ── Route CRUD ───────────────────────────────────────────
   async function renameRoute(id: string, name: string) {
-    await fetch(`/api/maps/${map.id}/routes/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
+    await api.put(`/api/maps/${map.id}/routes/${id}`, { name })
     setRoutes(prev => prev.map(r => r.id === id ? { ...r, name } : r))
   }
   async function recolorRoute(id: string, color: string) {
-    await fetch(`/api/maps/${map.id}/routes/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ color }),
-    })
+    await api.put(`/api/maps/${map.id}/routes/${id}`, { color })
     setRoutes(prev => prev.map(r => r.id === id ? { ...r, color } : r))
   }
   async function deleteRoute(id: string) {
-    await fetch(`/api/maps/${map.id}/routes/${id}`, { method: 'DELETE' })
+    await api.del(`/api/maps/${map.id}/routes/${id}`)
     setRoutes(prev => prev.filter(r => r.id !== id))
     if (selectedId === id) setSelectedId(null)
   }
   async function moveRoute(id: string, groupId: string | null) {
-    await fetch(`/api/maps/${map.id}/routes/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: groupId ?? '' }),
-    })
+    await api.put(`/api/maps/${map.id}/routes/${id}`, { group_id: groupId ?? '' })
     setRoutes(prev => prev.map(r => r.id === id ? { ...r, group_id: groupId } : r))
   }
   async function createGroup(name: string) {
-    const res = await fetch(`/api/maps/${map.id}/groups`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    const group: Group = await res.json()
+    const group = await api.post<Group>(`/api/maps/${map.id}/groups`, { name })
     setGroups(prev => [...prev, group])
   }
   async function renameGroup(id: string, name: string) {
-    await fetch(`/api/maps/${map.id}/groups/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
+    await api.put(`/api/maps/${map.id}/groups/${id}`, { name })
     setGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g))
   }
   async function deleteGroup(id: string) {
-    await fetch(`/api/maps/${map.id}/groups/${id}`, { method: 'DELETE' })
+    await api.del(`/api/maps/${map.id}/groups/${id}`)
     setGroups(prev => prev.filter(g => g.id !== id))
     setRoutes(prev => prev.map(r => r.group_id === id ? { ...r, group_id: null } : r))
   }
 
   async function handleSetScale(newScale: number) {
-    await fetch(`/api/maps/${map.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scale: newScale }),
-    })
+    await api.put(`/api/maps/${map.id}`, { scale: newScale })
     setScale(newScale)
   }
 

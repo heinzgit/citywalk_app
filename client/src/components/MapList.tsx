@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MapMeta } from '../App'
+import { api } from '../api'
 import styles from './MapList.module.css'
 
 interface Props {
@@ -26,8 +27,7 @@ export default function MapList({ onSelect, onUpload }: Props) {
 
   function fetchMaps() {
     setLoading(true)
-    fetch('/api/maps')
-      .then(r => r.json())
+    api.get<MapMeta[]>('/api/maps')
       .then(data => { setMaps(data); setLoading(false) })
       .catch(() => { setError('加载地图列表失败'); setLoading(false) })
   }
@@ -40,11 +40,7 @@ export default function MapList({ onSelect, onUpload }: Props) {
 
   async function submitRename(id: string) {
     if (!renameValue.trim()) { cancelRename(); return }
-    await fetch(`/api/maps/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: renameValue.trim() }),
-    })
+    await api.put(`/api/maps/${id}`, { name: renameValue.trim() })
     setMaps(prev => prev.map(m => m.id === id ? { ...m, original_name: renameValue.trim(), originalName: renameValue.trim() } : m))
     cancelRename()
   }
@@ -61,7 +57,7 @@ export default function MapList({ onSelect, onUpload }: Props) {
 
   async function confirmDelete() {
     if (!deletingId) return
-    await fetch(`/api/maps/${deletingId}`, { method: 'DELETE' })
+    await api.del(`/api/maps/${deletingId}`)
     setMaps(prev => prev.filter(m => m.id !== deletingId))
     setDeletingId(null)
   }

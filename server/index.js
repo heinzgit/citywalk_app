@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import mapsRouter from './routes/maps.js';
 import routesRouter from './routes/routes.js';
 import groupsRouter from './routes/groups.js';
+import authRouter from './routes/auth.js';
 import { initDb } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+app.use('/api/auth', authRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/maps/:mapId/routes', routesRouter);
 app.use('/api/maps/:mapId/groups', groupsRouter);

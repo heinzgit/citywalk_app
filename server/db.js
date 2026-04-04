@@ -5,7 +5,6 @@ import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load .env manually (no dotenv dependency)
 try {
   const env = readFileSync(path.join(__dirname, '.env'), 'utf8');
   for (const line of env.split('\n')) {
@@ -25,16 +24,26 @@ const pool = mysql.createPool({
 });
 
 export async function initDb() {
-  // Migration: add scale column if missing
-  try { await pool.execute('ALTER TABLE maps ADD COLUMN scale DOUBLE DEFAULT NULL') } catch (_) {}
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(36) PRIMARY KEY,
+      username VARCHAR(50) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      created_at VARCHAR(30) NOT NULL
+    ) ENGINE=InnoDB
+  `);
+
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS maps (
       id VARCHAR(36) PRIMARY KEY,
+      user_id VARCHAR(36) NOT NULL,
       filename VARCHAR(255) NOT NULL,
       original_name VARCHAR(255) NOT NULL,
       width INT NOT NULL,
       height INT NOT NULL,
-      created_at VARCHAR(30) NOT NULL
+      scale DOUBLE DEFAULT NULL,
+      created_at VARCHAR(30) NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB
   `);
 
@@ -42,9 +51,11 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS \`groups\` (
       id VARCHAR(36) PRIMARY KEY,
       map_id VARCHAR(36) NOT NULL,
+      user_id VARCHAR(36) NOT NULL,
       name VARCHAR(255) NOT NULL,
       created_at VARCHAR(30) NOT NULL,
-      FOREIGN KEY (map_id) REFERENCES maps(id) ON DELETE CASCADE
+      FOREIGN KEY (map_id) REFERENCES maps(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB
   `);
 
@@ -52,12 +63,14 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS routes (
       id VARCHAR(36) PRIMARY KEY,
       map_id VARCHAR(36) NOT NULL,
+      user_id VARCHAR(36) NOT NULL,
       name VARCHAR(255) NOT NULL,
       points TEXT NOT NULL,
       color VARCHAR(20) NOT NULL DEFAULT '#fffb00',
       group_id VARCHAR(36) DEFAULT NULL,
       created_at VARCHAR(30) NOT NULL,
       FOREIGN KEY (map_id) REFERENCES maps(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE SET NULL
     ) ENGINE=InnoDB
   `);
