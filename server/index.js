@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import mapsRouter from './routes/maps.js';
 import routesRouter from './routes/routes.js';
 import groupsRouter from './routes/groups.js';
+import { initDb } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -19,6 +20,13 @@ app.use('/api/maps', mapsRouter);
 app.use('/api/maps/:mapId/routes', routesRouter);
 app.use('/api/maps/:mapId/groups', groupsRouter);
 
-app.listen(PORT, () => {
-  console.log(`CityWalk server running at http://localhost:${PORT}`);
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`CityWalk server running at http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize database:', err.message);
+    process.exit(1);
+  });

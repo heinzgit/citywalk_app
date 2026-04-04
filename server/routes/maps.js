@@ -27,6 +27,17 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
 });
 
+// GET /api/maps — list all maps
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM maps ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/maps — upload a map image
 router.post('/', upload.single('image'), async (req, res) => {
   try {
@@ -36,10 +47,10 @@ router.post('/', upload.single('image'), async (req, res) => {
     const meta = await sharp(file.path).metadata();
     const id = uuidv4();
 
-    db.prepare(`
-      INSERT INTO maps (id, filename, original_name, width, height, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, file.filename, file.originalname, meta.width, meta.height, new Date().toISOString());
+    await db.execute(
+      'INSERT INTO maps (id, filename, original_name, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, file.filename, file.originalname, meta.width, meta.height, new Date().toISOString()]
+    );
 
     res.json({ id, filename: file.filename, originalName: file.originalname, width: meta.width, height: meta.height });
   } catch (err) {
@@ -49,10 +60,46 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // GET /api/maps/:id — get map metadata
-router.get('/:id', (req, res) => {
-  const map = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id);
-  if (!map) return res.status(404).json({ error: 'Map not found' });
-  res.json(map);
+router.get('/:id', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM maps WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Map not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/maps/:id — rename map
+router.put('/:id', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+    const [rows] = await db.execute('SELECT * FROM maps WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Map not found' });
+    await db.execute('UPDATE maps SET original_name = ? WHERE id = ?', [name.trim(), req.params.id]);
+    res.json({ ...rows[0], original_name: name.trim() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/maps/:id — delete map + image file
+router.delete('/:id', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM maps WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Map not found' });
+    await db.execute('DELETE FROM maps WHERE id = ?', [req.params.id]);
+    // Remove image file from disk (non-fatal if missing)
+    const filePath = path.join(__dirname, '../uploads', rows[0].filename);
+    import('fs').then(fs => fs.unlink(filePath, () => {}));
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

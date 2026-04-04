@@ -21,7 +21,13 @@
   letter-spacing: -0.3px;
 }
 
-.btn-primary   { background: #e53e3e; color: #fff; }
-.btn-secondary { background: #eef2ff; color: #4a7cfc; }
+.btn-primary   { background: #e53e3e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-secondary { background: #eef2ff; color: #4a7cfc; border: none; border-radius: 8px; padding: 8px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .btn-danger    { background: #fff1f0; color: #e53e3e; }
 .btn-ghost     { background: transparent; color: #666; }
+
+.app-header-sub {
+  font-size: 14px;
+  color: #6b7280;
+  flex: 1;
+}

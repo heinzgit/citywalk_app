@@ -1,42 +1,64 @@
-import Database from 'better-sqlite3';
+import mysql from 'mysql2/promise';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, 'citywalk.db'));
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Load .env manually (no dotenv dependency)
+try {
+  const env = readFileSync(path.join(__dirname, '.env'), 'utf8');
+  for (const line of env.split('\n')) {
+    const [key, ...rest] = line.split('=');
+    if (key && rest.length) process.env[key.trim()] ??= rest.join('=').trim();
+  }
+} catch (_) {}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS maps (
-    id TEXT PRIMARY KEY,
-    filename TEXT NOT NULL,
-    original_name TEXT NOT NULL,
-    width INTEGER NOT NULL,
-    height INTEGER NOT NULL,
-    created_at TEXT NOT NULL
-  );
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT) || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'citywalk',
+  waitForConnections: true,
+  connectionLimit: 10,
+});
 
-  CREATE TABLE IF NOT EXISTS groups (
-    id TEXT PRIMARY KEY,
-    map_id TEXT NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  );
+export async function initDb() {
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS maps (
+      id VARCHAR(36) PRIMARY KEY,
+      filename VARCHAR(255) NOT NULL,
+      original_name VARCHAR(255) NOT NULL,
+      width INT NOT NULL,
+      height INT NOT NULL,
+      created_at VARCHAR(30) NOT NULL
+    ) ENGINE=InnoDB
+  `);
 
-  CREATE TABLE IF NOT EXISTS routes (
-    id TEXT PRIMARY KEY,
-    map_id TEXT NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    points TEXT NOT NULL,
-    color TEXT NOT NULL DEFAULT '#fffb00',
-    group_id TEXT REFERENCES groups(id) ON DELETE SET NULL,
-    created_at TEXT NOT NULL
-  );
-`);
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS \`groups\` (
+      id VARCHAR(36) PRIMARY KEY,
+      map_id VARCHAR(36) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      created_at VARCHAR(30) NOT NULL,
+      FOREIGN KEY (map_id) REFERENCES maps(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+  `);
 
-// Migrate existing routes table if group_id column missing
-try { db.exec('ALTER TABLE routes ADD COLUMN group_id TEXT REFERENCES groups(id) ON DELETE SET NULL'); } catch (_) {}
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS routes (
+      id VARCHAR(36) PRIMARY KEY,
+      map_id VARCHAR(36) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      points TEXT NOT NULL,
+      color VARCHAR(20) NOT NULL DEFAULT '#fffb00',
+      group_id VARCHAR(36) DEFAULT NULL,
+      created_at VARCHAR(30) NOT NULL,
+      FOREIGN KEY (map_id) REFERENCES maps(id) ON DELETE CASCADE,
+      FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB
+  `);
+}
 
-export default db;
+export default pool;
