@@ -50,7 +50,7 @@ export default function MapCanvas({ map }: Props) {
   const transformRef = useRef(transform)
   transformRef.current = transform
   const [isPanning, setIsPanning] = useState(false)
-  const panRef = useRef({ active: false, lastX: 0, lastY: 0, hasMoved: false })
+  const panRef = useRef({ active: false, lastX: 0, lastY: 0, hasMoved: false, pointerId: -1, target: null as HTMLDivElement | null })
 
   const svgRef = useRef<SVGSVGElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -111,12 +111,14 @@ export default function MapCanvas({ map }: Props) {
 
   // ── Pan ──────────────────────────────────────────────────
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    // Disable pan in edit mode or when not left-click
-    if (drawing || editingRouteId || e.button !== 0) return
+    if (e.button !== 0) return
     // Don't pan if the click target is a button or input
     if ((e.target as HTMLElement).closest('button, input, select')) return
-    panRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, hasMoved: false }
-    e.currentTarget.setPointerCapture(e.pointerId)
+    // Allow pan when: drawing (drag to pan, click to add point),
+    // or not editing, or editing with no point selected and not inserting
+    const canPan = drawing || !editingRouteId || (selectedPointIdx === null && !editInsertMode)
+    if (!canPan) return
+    panRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, hasMoved: false, pointerId: e.pointerId, target: e.currentTarget }
   }
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!panRef.current.active) return
@@ -125,6 +127,8 @@ export default function MapCanvas({ map }: Props) {
     if (!panRef.current.hasMoved && Math.hypot(dx, dy) > 3) {
       panRef.current.hasMoved = true
       setIsPanning(true)
+      // Capture pointer only once drag starts, so clicks still reach SVG
+      panRef.current.target?.setPointerCapture(panRef.current.pointerId)
     }
     if (panRef.current.hasMoved) {
       panRef.current.lastX = e.clientX
@@ -139,6 +143,8 @@ export default function MapCanvas({ map }: Props) {
 
   // ── Drawing ──────────────────────────────────────────────
   function handleSvgClick(e: React.MouseEvent) {
+    // Ignore click that was actually a pan drag
+    if (panRef.current.hasMoved) return
     if (drawing) {
       e.stopPropagation()
       setDraftPoints(prev => [...prev, toSvgCoords(e)])
@@ -284,9 +290,10 @@ export default function MapCanvas({ map }: Props) {
   const previewPoints = mousePos && draftPoints.length > 0 ? [...draftPoints, mousePos] : draftPoints
   const editingRoute = editingRouteId ? routes.find(r => r.id === editingRouteId) ?? null : null
 
-  const cursor = (drawing || (editingRouteId && editInsertMode))
-    ? 'crosshair'
-    : isPanning ? 'grabbing' : 'grab'
+  const canPanCursor = drawing || !editingRouteId || (selectedPointIdx === null && !editInsertMode)
+  const cursor = isPanning ? 'grabbing'
+    : (drawing || (editingRouteId && editInsertMode)) ? 'crosshair'
+    : canPanCursor ? 'grab' : 'default'
 
   return (
     <div className={styles.layout}>
