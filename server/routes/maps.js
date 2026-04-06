@@ -49,12 +49,20 @@ router.post('/', upload.single('image'), async (req, res) => {
     const meta = await sharp(file.path).metadata();
     const id = uuidv4();
 
+    // Generate thumbnail (400px wide, maintain aspect ratio)
+    const thumbFilename = `thumb_${file.filename}`;
+    const thumbPath = path.join(__dirname, '../uploads', thumbFilename);
+    await sharp(file.path)
+      .resize(400, null, { fit: 'inside' })
+      .jpeg({ quality: 80 })
+      .toFile(thumbPath);
+
     await db.execute(
-      'INSERT INTO maps (id, user_id, filename, original_name, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, req.userId, file.filename, file.originalname, meta.width, meta.height, new Date().toISOString()]
+      'INSERT INTO maps (id, user_id, filename, original_name, width, height, thumbnail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, req.userId, file.filename, file.originalname, meta.width, meta.height, thumbFilename, new Date().toISOString()]
     );
 
-    res.json({ id, filename: file.filename, original_name: file.originalname, width: meta.width, height: meta.height });
+    res.json({ id, filename: file.filename, original_name: file.originalname, width: meta.width, height: meta.height, thumbnail: thumbFilename });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -96,8 +104,13 @@ router.delete('/:id', async (req, res) => {
     const [rows] = await db.query('SELECT * FROM maps WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
     if (!rows.length) return res.status(404).json({ error: 'Map not found' });
     await db.execute('DELETE FROM maps WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+    const fs = await import('fs');
     const filePath = path.join(__dirname, '../uploads', rows[0].filename);
-    import('fs').then(fs => fs.unlink(filePath, () => {}));
+    fs.unlink(filePath, () => {});
+    if (rows[0].thumbnail) {
+      const thumbPath = path.join(__dirname, '../uploads', rows[0].thumbnail);
+      fs.unlink(thumbPath, () => {});
+    }
     res.status(204).end();
   } catch (err) {
     console.error(err);

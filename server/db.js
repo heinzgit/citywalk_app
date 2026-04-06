@@ -42,6 +42,7 @@ export async function initDb() {
       width INT NOT NULL,
       height INT NOT NULL,
       scale DOUBLE DEFAULT NULL,
+      thumbnail VARCHAR(255) DEFAULT NULL,
       created_at VARCHAR(30) NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB

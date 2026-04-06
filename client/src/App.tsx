@@ -14,6 +14,7 @@ export interface MapMeta {
   width: number
   height: number
   scale?: number | null
+  thumbnail?: string
 }
 
 type View = 'list' | 'upload' | 'canvas'

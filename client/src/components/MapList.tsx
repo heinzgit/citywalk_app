@@ -83,7 +83,7 @@ export default function MapList({ onSelect, onUpload }: Props) {
               onClick={() => !isRenaming && onSelect(map)}
             >
               <div className={styles.thumb}>
-                <img src={`/uploads/${map.filename}`} alt={displayName} draggable={false} />
+                <img src={`/uploads/${map.thumbnail ?? map.filename}`} alt={displayName} draggable={false} />
                 <div className={styles.actions} onClick={e => e.stopPropagation()}>
                   <button className={styles.actionBtn} title="重命名" onClick={e => startRename(e, map)}>✏️</button>
                   <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="删除" onClick={e => startDelete(e, map.id)}>🗑</button>
