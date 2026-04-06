@@ -295,6 +295,9 @@ export default function MapCanvas({ map }: Props) {
     : (drawing || (editingRouteId && editInsertMode)) ? 'crosshair'
     : canPanCursor ? 'grab' : 'default'
 
+  // Inverse scale factor: keeps stroke/radius/font constant on screen
+  const inv = 1 / transform.scale
+
   return (
     <div className={styles.layout}>
       <RouteList
@@ -368,21 +371,21 @@ export default function MapCanvas({ map }: Props) {
                     points={pointsToString(route.points)}
                     fill="none"
                     stroke={route.color}
-                    strokeWidth={selectedId === route.id ? 5 : 3}
+                    strokeWidth={(selectedId === route.id ? 5 : 3) * inv}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     opacity={editingRouteId ? 0.25 : selectedId && selectedId !== route.id ? 0.4 : 1}
                     className={!drawing && !editingRouteId ? styles.routeLine : ''}
                   />
                   {selectedId === route.id && !editingRouteId && route.points.map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r={5} fill={route.color} stroke="#fff" strokeWidth={1.5} />
+                    <circle key={i} cx={x} cy={y} r={5 * inv} fill={route.color} stroke="#fff" strokeWidth={1.5 * inv} />
                   ))}
                   {selectedId === route.id && !editingRouteId && (() => {
                     const mid = route.points[Math.floor(route.points.length / 2)]
                     if (!mid) return null
                     return (
-                      <text x={mid[0]} y={mid[1] - 10} textAnchor="middle" fontSize={14}
-                        fill={route.color} stroke="#fff" strokeWidth={3} paintOrder="stroke" fontWeight="600">
+                      <text x={mid[0]} y={mid[1] - 10 * inv} textAnchor="middle" fontSize={14 * inv}
+                        fill={route.color} stroke="#fff" strokeWidth={3 * inv} paintOrder="stroke" fontWeight="600">
                         {route.name}
                       </text>
                     )
@@ -398,7 +401,7 @@ export default function MapCanvas({ map }: Props) {
                   points={pointsToString(editPoints)}
                   fill="none"
                   stroke={editingRoute.color}
-                  strokeWidth={3}
+                  strokeWidth={3 * inv}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -408,7 +411,7 @@ export default function MapCanvas({ map }: Props) {
                   const [x2, y2] = editPoints[selectedPointIdx + 1]
                   return (
                     <circle cx={(x1 + x2) / 2} cy={(y1 + y2) / 2}
-                      r={5} fill="#3182ce" opacity={0.5}
+                      r={5 * inv} fill="#3182ce" opacity={0.5}
                       style={{ pointerEvents: 'none' }} />
                   )
                 })()}
@@ -417,8 +420,8 @@ export default function MapCanvas({ map }: Props) {
                   const mid = editPoints[Math.floor(editPoints.length / 2)]
                   if (!mid) return null
                   return (
-                    <text x={mid[0]} y={mid[1] - 14} textAnchor="middle" fontSize={14}
-                      fill={editingRoute.color} stroke="#fff" strokeWidth={3}
+                    <text x={mid[0]} y={mid[1] - 14 * inv} textAnchor="middle" fontSize={14 * inv}
+                      fill={editingRoute.color} stroke="#fff" strokeWidth={3 * inv}
                       paintOrder="stroke" fontWeight="600" style={{ pointerEvents: 'none' }}>
                       {editingRoute.name}
                     </text>
@@ -431,10 +434,10 @@ export default function MapCanvas({ map }: Props) {
                     <circle
                       key={i}
                       cx={x} cy={y}
-                      r={isSel ? 10 : 7}
+                      r={(isSel ? 10 : 7) * inv}
                       fill={isSel ? '#3182ce' : '#fff'}
                       stroke={isSel ? '#fff' : editingRoute.color}
-                      strokeWidth={2.5}
+                      strokeWidth={2.5 * inv}
                       style={{ cursor: editInsertMode ? 'default' : 'move', touchAction: 'none' }}
                       onPointerDown={e => handlePointPointerDown(e, i)}
                       onPointerMove={e => handlePointPointerMove(e, i)}
@@ -449,12 +452,12 @@ export default function MapCanvas({ map }: Props) {
             {/* Drawing preview */}
             {drawing && previewPoints.length > 1 && (
               <polyline points={pointsToString(previewPoints)} fill="none"
-                stroke={DEFAULT_COLOR} strokeWidth={3}
+                stroke={DEFAULT_COLOR} strokeWidth={3 * inv}
                 strokeLinecap="round" strokeLinejoin="round"
-                strokeDasharray="10 6" opacity={0.85} />
+                strokeDasharray={`${10 * inv} ${6 * inv}`} opacity={0.85} />
             )}
             {drawing && draftPoints.map(([x, y], i) => (
-              <circle key={i} cx={x} cy={y} r={5} fill={DEFAULT_COLOR} stroke="#fff" strokeWidth={1.5} />
+              <circle key={i} cx={x} cy={y} r={5 * inv} fill={DEFAULT_COLOR} stroke="#fff" strokeWidth={1.5 * inv} />
             ))}
           </svg>
         </div>
