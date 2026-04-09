@@ -10,6 +10,20 @@
   position: relative;
   overflow: hidden;
   background: #e2e8f0;
+  min-width: 200px;
+}
+
+.resizeHandle {
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.resizeHandle:hover,
+.resizeHandle.dragging {
+  background: #4a7cfc;
 }
 
 .imageContainer {

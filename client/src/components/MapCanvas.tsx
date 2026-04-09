@@ -11,6 +11,7 @@ export interface Route {
   points: [number, number][]
   color: string
   group_id: string | null
+  visible: boolean
   created_at: string
 }
 
@@ -18,6 +19,7 @@ export interface Group {
   id: string
   map_id: string
   name: string
+  visible: boolean
   created_at: string
 }
 
@@ -56,12 +58,18 @@ export default function MapCanvas({ map }: Props) {
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
 
+  // Sidebar resize state
+  const [sidebarWidth, setSidebarWidth] = useState(280)
+  const [resizing, setResizing] = useState(false)
+  const resizeStartX = useRef(0)
+  const resizeStartWidth = useRef(0)
+
   // Load data on mount
   useEffect(() => {
     api.get<Route[]>(`/api/maps/${map.id}/routes`)
-      .then(setRoutes).catch(console.error)
+      .then(routes => setRoutes(routes.map(r => ({ ...r, visible: true })))).catch(console.error)
     api.get<Group[]>(`/api/maps/${map.id}/groups`)
-      .then(setGroups).catch(console.error)
+      .then(groups => setGroups(groups.map(g => ({ ...g, visible: true })))).catch(console.error)
   }, [map.id])
 
   // Init transform: center-fit the image
@@ -141,6 +149,28 @@ export default function MapCanvas({ map }: Props) {
     setIsPanning(false)
   }
 
+  // ── Sidebar resize ───────────────────────────────────────
+  function handleResizeStart(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation()
+    setResizing(true)
+    resizeStartX.current = e.clientX
+    resizeStartWidth.current = sidebarWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  function handleResizeMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!resizing) return
+    const dx = e.clientX - resizeStartX.current
+    const newWidth = Math.max(180, Math.min(600, resizeStartWidth.current + dx))
+    setSidebarWidth(newWidth)
+  }
+  function handleResizeEnd() {
+    setResizing(false)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
   // ── Drawing ──────────────────────────────────────────────
   function handleSvgClick(e: React.MouseEvent) {
     // Ignore click that was actually a pan drag
@@ -188,7 +218,7 @@ export default function MapCanvas({ map }: Props) {
     if (!name) { cancelDrawing(); return }
     try {
       const route = await api.post<Route>(`/api/maps/${map.id}/routes`, { name, points, color: DEFAULT_COLOR })
-      setRoutes(prev => [...prev, route])
+      setRoutes(prev => [...prev, { ...route, visible: true }])
     } catch (err) { console.error(err) }
     cancelDrawing()
   }
@@ -266,7 +296,7 @@ export default function MapCanvas({ map }: Props) {
   }
   async function createGroup(name: string) {
     const group = await api.post<Group>(`/api/maps/${map.id}/groups`, { name })
-    setGroups(prev => [...prev, group])
+    setGroups(prev => [...prev, { ...group, visible: true }])
   }
   async function renameGroup(id: string, name: string) {
     await api.put(`/api/maps/${map.id}/groups/${id}`, { name })
@@ -276,6 +306,14 @@ export default function MapCanvas({ map }: Props) {
     await api.del(`/api/maps/${map.id}/groups/${id}`)
     setGroups(prev => prev.filter(g => g.id !== id))
     setRoutes(prev => prev.map(r => r.group_id === id ? { ...r, group_id: null } : r))
+  }
+
+  function toggleRouteVisible(id: string) {
+    setRoutes(prev => prev.map(r => r.id === id ? { ...r, visible: !r.visible } : r))
+  }
+
+  function toggleGroupVisible(id: string) {
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, visible: !g.visible } : g))
   }
 
   async function handleSetScale(newScale: number) {
@@ -290,6 +328,11 @@ export default function MapCanvas({ map }: Props) {
   const previewPoints = mousePos && draftPoints.length > 0 ? [...draftPoints, mousePos] : draftPoints
   const editingRoute = editingRouteId ? routes.find(r => r.id === editingRouteId) ?? null : null
 
+  // Routes visible on map: route visible AND (no group or group visible)
+  const visibleRoutes = routes.filter(r =>
+    r.visible && (r.group_id === null || groups.find(g => g.id === r.group_id)?.visible)
+  )
+
   const canPanCursor = drawing || !editingRouteId || (selectedPointIdx === null && !editInsertMode)
   const cursor = isPanning ? 'grabbing'
     : (drawing || (editingRouteId && editInsertMode)) ? 'crosshair'
@@ -300,23 +343,34 @@ export default function MapCanvas({ map }: Props) {
 
   return (
     <div className={styles.layout}>
-      <RouteList
-        routes={routes}
-        groups={groups}
-        selectedId={selectedId}
-        drawing={drawing}
-        scale={scale}
-        onSelect={id => { setSelectedId(id); exitEditMode() }}
-        onRename={renameRoute}
-        onRecolor={recolorRoute}
-        onMove={moveRoute}
-        onDelete={deleteRoute}
-        onCreateGroup={createGroup}
-        onRenameGroup={renameGroup}
-        onDeleteGroup={deleteGroup}
-        onStartDraw={startDrawing}
-        onCancelDraw={cancelDrawing}
-        onSetScale={handleSetScale}
+      <div style={{ width: sidebarWidth, flexShrink: 0, display: 'flex', minWidth: 0 }}>
+        <RouteList
+          routes={routes}
+          groups={groups}
+          selectedId={selectedId}
+          drawing={drawing}
+          scale={scale}
+          onSelect={id => { setSelectedId(id); exitEditMode() }}
+          onRename={renameRoute}
+          onRecolor={recolorRoute}
+          onMove={moveRoute}
+          onDelete={deleteRoute}
+          onCreateGroup={createGroup}
+          onRenameGroup={renameGroup}
+          onDeleteGroup={deleteGroup}
+          onToggleRouteVisible={toggleRouteVisible}
+          onToggleGroupVisible={toggleGroupVisible}
+          onStartDraw={startDrawing}
+          onCancelDraw={cancelDrawing}
+          onSetScale={handleSetScale}
+        />
+      </div>
+
+      <div
+        className={`${styles.resizeHandle} ${resizing ? styles.dragging : ''}`}
+        onPointerDown={handleResizeStart}
+        onPointerMove={handleResizeMove}
+        onPointerUp={handleResizeEnd}
       />
 
       <div
@@ -358,7 +412,7 @@ export default function MapCanvas({ map }: Props) {
             onMouseLeave={() => setMousePos(null)}
           >
             {/* Saved routes */}
-            {routes.map(route => {
+            {visibleRoutes.map(route => {
               if (route.id === editingRouteId) return null
               return (
                 <g key={route.id} onClick={e => {

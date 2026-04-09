@@ -16,6 +16,8 @@ interface Props {
   onCreateGroup: (name: string) => void
   onRenameGroup: (id: string, name: string) => void
   onDeleteGroup: (id: string) => void
+  onToggleRouteVisible: (id: string) => void
+  onToggleGroupVisible: (id: string) => void
   onStartDraw: () => void
   onCancelDraw: () => void
   onSetScale: (scale: number) => void
@@ -41,6 +43,7 @@ export default function RouteList({
   routes, groups, selectedId, drawing, scale,
   onSelect, onRename, onRecolor, onMove, onDelete,
   onCreateGroup, onRenameGroup, onDeleteGroup,
+  onToggleRouteVisible, onToggleGroupVisible,
   onStartDraw, onCancelDraw, onSetScale,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -109,6 +112,14 @@ export default function RouteList({
         className={`${styles.item} ${indented ? styles.indented : ''} ${selectedId === route.id ? styles.selected : ''}`}
         onClick={() => onSelect(route.id)}
       >
+        <button
+          className={`btn-ghost ${styles.visibleToggle}`}
+          title={route.visible ? "隐藏路线" : "显示路线"}
+          onClick={e => { e.stopPropagation(); onToggleRouteVisible(route.id) }}
+        >
+          {route.visible ? '👁' : '🙈'}
+        </button>
+
         <input
           type="color"
           className={styles.colorPicker}
@@ -261,6 +272,13 @@ export default function RouteList({
                 className={styles.groupHeader}
                 onClick={() => toggleCollapse(group.id)}
               >
+                <button
+                  className={`btn-ghost ${styles.visibleToggle}`}
+                  title={group.visible ? "隐藏文件夹内路线" : "显示文件夹内路线"}
+                  onClick={e => { e.stopPropagation(); onToggleGroupVisible(group.id) }}
+                >
+                  {group.visible ? '👁' : '🙈'}
+                </button>
                 <span className={styles.arrow}>{isCollapsed ? '▶' : '▼'}</span>
                 {editingGroupId === group.id ? (
                   <input

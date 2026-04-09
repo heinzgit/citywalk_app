@@ -1,11 +1,11 @@
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  flex: 1;
   background: #fff;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .header {
@@ -177,6 +177,13 @@
   padding: 3px 6px;
   font-size: 11px;
   line-height: 1;
+}
+
+.visibleToggle {
+  padding: 2px 4px !important;
+  font-size: 12px !important;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .folderSelect {
