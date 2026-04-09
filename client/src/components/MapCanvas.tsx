@@ -313,7 +313,12 @@ export default function MapCanvas({ map }: Props) {
   }
 
   function toggleGroupVisible(id: string) {
-    setGroups(prev => prev.map(g => g.id === id ? { ...g, visible: !g.visible } : g))
+    const groupRoutes = routes.filter(r => r.group_id === id)
+    if (groupRoutes.length === 0) return
+    // If all routes are visible, hide all; otherwise show all
+    const allVisible = groupRoutes.every(r => r.visible)
+    const newVisible = !allVisible
+    setRoutes(prev => prev.map(r => r.group_id === id ? { ...r, visible: newVisible } : r))
   }
 
   async function handleSetScale(newScale: number) {
@@ -328,10 +333,8 @@ export default function MapCanvas({ map }: Props) {
   const previewPoints = mousePos && draftPoints.length > 0 ? [...draftPoints, mousePos] : draftPoints
   const editingRoute = editingRouteId ? routes.find(r => r.id === editingRouteId) ?? null : null
 
-  // Routes visible on map: route visible AND (no group or group visible)
-  const visibleRoutes = routes.filter(r =>
-    r.visible && (r.group_id === null || groups.find(g => g.id === r.group_id)?.visible)
-  )
+  // Routes visible on map: route's individual visibility is final
+  const visibleRoutes = routes.filter(r => r.visible)
 
   const canPanCursor = drawing || !editingRouteId || (selectedPointIdx === null && !editInsertMode)
   const cursor = isPanning ? 'grabbing'

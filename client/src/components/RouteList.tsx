@@ -266,6 +266,9 @@ export default function RouteList({
         {groups.map(group => {
           const groupRoutes = routes.filter(r => r.group_id === group.id)
           const isCollapsed = collapsed.has(group.id)
+          // Derive folder visibility from all routes: folder visible only if ALL routes visible
+          const groupAllVisible = groupRoutes.length > 0 && groupRoutes.every(r => r.visible)
+          const groupSomeVisible = groupRoutes.some(r => r.visible)
           return (
             <li key={group.id} className={styles.groupItem}>
               <div
@@ -274,10 +277,10 @@ export default function RouteList({
               >
                 <button
                   className={`btn-ghost ${styles.visibleToggle}`}
-                  title={group.visible ? "隐藏文件夹内路线" : "显示文件夹内路线"}
+                  title={groupAllVisible ? "隐藏文件夹内所有路线" : (groupSomeVisible ? "文件夹部分路线可见" : "显示文件夹内所有路线")}
                   onClick={e => { e.stopPropagation(); onToggleGroupVisible(group.id) }}
                 >
-                  {group.visible ? '👁' : '🙈'}
+                  {groupAllVisible ? '👁' : (groupSomeVisible ? '◐' : '🙈')}
                 </button>
                 <span className={styles.arrow}>{isCollapsed ? '▶' : '▼'}</span>
                 {editingGroupId === group.id ? (
